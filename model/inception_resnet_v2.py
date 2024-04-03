@@ -38,6 +38,22 @@ class Stem(nn.Module):
         return torch.cat((x0, x1, x2, x3), dim=1)
 
 
+class CIFARStem(nn.Module):
+    """
+    This is used as an initial layer directly after the
+    image input.
+    """
+
+    def __init__(self, C_in=3, C_out=64):
+        super(CIFARStem, self).__init__()
+        self.seq = nn.Sequential(
+            nn.Conv2d(C_in, C_out, 3, padding=1, bias=False), nn.BatchNorm2d(C_out)
+        )
+
+    def forward(self, x):
+        return self.seq(x)
+
+
 class Inception_ResNet_A(nn.Module):
     def __init__(self, in_channels, scale=1.0):
         super(Inception_ResNet_A, self).__init__()
@@ -83,9 +99,9 @@ class Inception_ResNet_B(nn.Module):
         return self.relu(x + self.scale * x_res)
 
 
-class Reduciton_B(nn.Module):
+class Reduction_B(nn.Module):
     def __init__(self, in_channels):
-        super(Reduciton_B, self).__init__()
+        super(Reduction_B, self).__init__()
         self.branch_0 = nn.Sequential(
             Conv2d(in_channels, 256, 1, stride=1, padding=0, bias=False),
             Conv2d(256, 384, 3, stride=2, padding=0, bias=False)
@@ -136,13 +152,13 @@ class Inception_ResNetv2(nn.Module):
     def __init__(self, in_channels=3, classes=1000, k=256, l=256, m=384, n=384):
         super(Inception_ResNetv2, self).__init__()
         blocks = []
-        blocks.append(Stem(in_channels))
+        blocks.append(CIFARStem(C_in=in_channels, C_out=320))
         for i in range(10):
             blocks.append(Inception_ResNet_A(320, 0.17))
         blocks.append(Reduction_A(320, k, l, m, n))
         for i in range(20):
             blocks.append(Inception_ResNet_B(1088, 0.10))
-        blocks.append(Reduciton_B(1088))
+        blocks.append(Reduction_B(1088))
         for i in range(9):
             blocks.append(Inception_ResNet_C(2080, 0.20))
         blocks.append(Inception_ResNet_C(2080, activation=False))

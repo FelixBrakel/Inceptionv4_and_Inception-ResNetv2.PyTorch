@@ -37,48 +37,45 @@ def main():
         ]
     )
 
-    train_dataset = torchvision.datasets.CIFAR10(root='./data/cifar10', train=True, transform=train_transform, download=True)
-    test_dataset = torchvision.datasets.CIFAR10(root='./data/cifar10', train=False, transform=valid_transform)
+    train_dataset = torchvision.datasets.CIFAR100(root='./data/cifar100', train=True, transform=train_transform, download=True)
+    test_dataset = torchvision.datasets.CIFAR100(root='./data/cifar100', train=False, transform=valid_transform)
 
     train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
     test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4)
 
     # Model
-    model = Inception_ResNetv2(classes=10)  # Change num_classes to 10 for CIFAR-10
+    model = Inception_ResNetv2(classes=100)  # Change num_classes to 10 for CIFAR-10
     model = model.to(device)
 
     # Loss and optimizer
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss().cuda()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs)
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
+    scaler = torch.cuda.amp.GradScaler(enabled=False)
 
-    threading.Timer(5.0, lambda : logging.log(
-        logging.INFO,
-        f"Epoch {epoch}-{i}, Train loss: {loss:.5f}, Learning rate: {scheduler.get_last_lr():}",
-    )).start()
+    logger = logging.getLogger()
+    logging.basicConfig()
+    logger.setLevel(logging.DEBUG)
 
     # Training loop
     for epoch in range(num_epochs):
         for i, (images, labels) in enumerate(train_loader):
+            optimizer.zero_grad()
             images = images.to(device)
             labels = labels.to(device)
 
             # Backward and optimize
-            optimizer.zero_grad()
-
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-
-            loss.backward()
-            optimizer.step()
-
-            if i % 5 == 0:
-                logger.log(
-                    logging.INFO,
-                    f"Epoch {epoch}-{i}, Train loss: {loss:.5f}, Learning rate: {scheduler.get_last_lr():}",
-                )
+            with torch.amp.autocast(device_type="cuda", dtype=torch.float16, enabled=False):
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+                if i % 25 == 0:
+                    logger.log(
+                        logging.INFO,
+                        f"Epoch {epoch}-{i}, Train loss: {loss:.5f}, Learning rate: {scheduler.get_last_lr()}",
+                    )
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
         scheduler.step()
 

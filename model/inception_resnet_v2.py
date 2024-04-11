@@ -159,7 +159,7 @@ class Inception_ResNetv2(nn.Module):
         for i in range(20):
             blocks.append(Inception_ResNet_B(1088, 0.10))
         blocks.append(Reduction_B(1088))
-        for i in range(9):
+        for i in range(10):
             blocks.append(Inception_ResNet_C(2080, 0.20))
         blocks.append(Inception_ResNet_C(2080, activation=False))
         self.features = nn.Sequential(*blocks)

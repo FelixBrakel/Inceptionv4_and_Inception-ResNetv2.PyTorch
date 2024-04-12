@@ -153,13 +153,13 @@ class Inception_ResNetv2(nn.Module):
         super(Inception_ResNetv2, self).__init__()
         blocks = []
         blocks.append(CIFARStem(C_in=in_channels, C_out=320))
-        for i in range(10):
+        for i in range(5):
             blocks.append(Inception_ResNet_A(320, 0.17))
         blocks.append(Reduction_A(320, k, l, m, n))
-        for i in range(20):
+        for i in range(10):
             blocks.append(Inception_ResNet_B(1088, 0.10))
         blocks.append(Reduction_B(1088))
-        for i in range(10):
+        for i in range(5):
             blocks.append(Inception_ResNet_C(2080, 0.20))
         blocks.append(Inception_ResNet_C(2080, activation=False))
         self.features = nn.Sequential(*blocks)
